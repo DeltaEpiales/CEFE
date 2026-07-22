@@ -18,6 +18,8 @@ FetchContent_MakeAvailable(pybind11)
 set(BUILD_TESTING OFF CACHE BOOL "Disable tests" FORCE)
 set(EIGEN_BUILD_TESTING OFF CACHE BOOL "Disable Eigen tests" FORCE)
 set(EIGEN_BUILD_DOC OFF CACHE BOOL "Disable Eigen docs" FORCE)
+set(EIGEN_BUILD_BLAS OFF CACHE BOOL "Disable Eigen BLAS" FORCE)
+set(EIGEN_BUILD_LAPACK OFF CACHE BOOL "Disable Eigen LAPACK" FORCE)
 FetchContent_Declare(
   eigen
   GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git

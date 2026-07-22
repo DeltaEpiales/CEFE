@@ -20,7 +20,8 @@ class CMakeBuild(build_ext):
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={extdir}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
-            f"-DCMAKE_BUILD_TYPE=Release"
+            f"-DCMAKE_BUILD_TYPE=Release",
+            f"-DCMAKE_Fortran_COMPILER=NOTFOUND"
         ]
 
         build_args = []

@@ -29,8 +29,9 @@ jobs:
 
     - name: Build and install CEFE
       run: |
-        pip install .
+        python setup.py build_ext --inplace
 
     - name: Run tests
       run: |
-        pytest tests/
+        python -m pytest tests/
+        python test_simulation.py

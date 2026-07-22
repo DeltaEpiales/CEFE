@@ -25,10 +25,11 @@ class CMakeBuild(build_ext):
 
         build_args = []
         if sys.platform.startswith("win"):
-            # Sanitize PATH to remove MSYS2/devkitpro which hijacks CMake
-            env_path = os.environ.get("PATH", "")
-            clean_paths = [p for p in env_path.split(os.pathsep) if "msys" not in p.lower() and "devkitpro" not in p.lower()]
-            os.environ["PATH"] = os.pathsep.join(clean_paths)
+            # Sanitize PATH only for local builds, since GitHub Actions runners are already clean
+            if not os.environ.get("GITHUB_ACTIONS"):
+                env_path = os.environ.get("PATH", "")
+                clean_paths = [p for p in env_path.split(os.pathsep) if "msys" not in p.lower() and "devkitpro" not in p.lower()]
+                os.environ["PATH"] = os.pathsep.join(clean_paths)
             
             cmake_args += ["-G", "Visual Studio 17 2022", "-A", "x64"]
             build_args += ["--config", "Release"]

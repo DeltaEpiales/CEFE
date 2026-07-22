@@ -1,7 +1,7 @@
 #define _USE_MATH_DEFINES
 #include "cefe/geometry/CausalDiamond.hpp"
 #include <cmath>
-
+#include <unordered_map>
 namespace cefe {
 namespace geometry {
 
@@ -60,18 +60,37 @@ CausalDiamondGrid::SpatialSlice CausalDiamondGrid::build_spatial_laplacian(doubl
     std::vector<Eigen::Triplet<double>> triplets;
     std::vector<double> diag(N, 0.0);
     
+    std::unordered_map<long long, std::size_t> spatial_hash;
+    auto get_hash = [](int x, int y, int z) -> long long {
+        return (static_cast<long long>(x + 100000) << 40) | 
+               (static_cast<long long>(y + 100000) << 20) | 
+               (static_cast<long long>(z + 100000));
+    };
+
+    for (std::size_t i = 0; i < N; ++i) {
+        const auto& p = points[slice.original_indices[i]];
+        int xi = std::round(p.x / ds);
+        int yi = std::round(p.y / ds);
+        int zi = std::round(p.z / ds);
+        spatial_hash[get_hash(xi, yi, zi)] = i;
+    }
+    
     for (std::size_t i = 0; i < N; ++i) {
         const auto& p1 = points[slice.original_indices[i]];
+        int xi = std::round(p1.x / ds);
+        int yi = std::round(p1.y / ds);
+        int zi = std::round(p1.z / ds);
         
-        for (std::size_t j = i + 1; j < N; ++j) {
-            const auto& p2 = points[slice.original_indices[j]];
-            double dist2 = (p1.x - p2.x)*(p1.x - p2.x) + 
-                           (p1.y - p2.y)*(p1.y - p2.y) + 
-                           (p1.z - p2.z)*(p1.z - p2.z);
-                           
-            // If nearest neighbor on grid
-            if (std::abs(dist2 - ds * ds) < 1e-5) {
-                double proper_ds = metric->get_spatial_distance(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+        // Only check positive offsets to avoid double-counting edges
+        int offsets[3][3] = {{1,0,0}, {0,1,0}, {0,0,1}};
+        for (int d = 0; d < 3; ++d) {
+            long long neighbor_key = get_hash(xi + offsets[d][0], yi + offsets[d][1], zi + offsets[d][2]);
+            auto it = spatial_hash.find(neighbor_key);
+            if (it != spatial_hash.end()) {
+                std::size_t j = it->second;
+                const auto& p2 = points[slice.original_indices[j]];
+                
+                double proper_ds = metric->get_spatial_distance(p1.t, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
                 double inv_ds2 = 1.0 / (proper_ds * proper_ds);
                 
                 triplets.push_back(Eigen::Triplet<double>(i, j, -inv_ds2));

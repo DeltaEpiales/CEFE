@@ -30,6 +30,18 @@ PYBIND11_MODULE(cefe_core, m) {
     py::class_<cefe::geometry::SchwarzschildMetric, cefe::geometry::Metric, std::shared_ptr<cefe::geometry::SchwarzschildMetric>>(m, "SchwarzschildMetric")
         .def(py::init<double>(), py::arg("Rs"));
 
+    // Bind AntiDeSitterMetric
+    py::class_<cefe::geometry::AntiDeSitterMetric, cefe::geometry::Metric, std::shared_ptr<cefe::geometry::AntiDeSitterMetric>>(m, "AntiDeSitterMetric")
+        .def(py::init<double>(), py::arg("L"));
+
+    // Bind FLRWMetric
+    py::class_<cefe::geometry::FLRWMetric, cefe::geometry::Metric, std::shared_ptr<cefe::geometry::FLRWMetric>>(m, "FLRWMetric")
+        .def(py::init<>());
+
+    // Bind KerrMetric
+    py::class_<cefe::geometry::KerrMetric, cefe::geometry::Metric, std::shared_ptr<cefe::geometry::KerrMetric>>(m, "KerrMetric")
+        .def(py::init<double, double>(), py::arg("M"), py::arg("a"));
+
     // Bind GridPoint struct
     py::class_<cefe::geometry::GridPoint>(m, "GridPoint")
         .def_readonly("t", &cefe::geometry::GridPoint::t)
@@ -54,9 +66,12 @@ PYBIND11_MODULE(cefe_core, m) {
         .def(py::init<std::shared_ptr<cefe::geometry::CausalDiamondGrid>>(), py::arg("grid"))
         .def("set_mass", &cefe::core::EntropicFieldEngine::set_mass, py::arg("m"))
         .def("set_boundary_condition", &cefe::core::EntropicFieldEngine::set_boundary_condition, py::arg("bc"))
-        .def("evolve_to_slice", &cefe::core::EntropicFieldEngine::evolve_to_slice, py::arg("target_t"))
+        .def("set_interaction_coupling", &cefe::core::EntropicFieldEngine::set_interaction_coupling, py::arg("lambda"))
+        .def("evolve_to_slice", &cefe::core::EntropicFieldEngine::evolve_to_slice, py::arg("target_t"), py::arg("temperature") = 0.0)
+        .def("evolve_to_slice_sparse", &cefe::core::EntropicFieldEngine::evolve_to_slice_sparse, py::arg("target_t"), py::arg("num_modes"), py::arg("temperature") = 0.0)
         .def("compute_entanglement_entropy", &cefe::core::EntropicFieldEngine::compute_entanglement_entropy, py::arg("subregion_radius"))
-        .def("initialize_field_state", &cefe::core::EntropicFieldEngine::initialize_field_state, py::arg("target_t"))
+        .def("compute_entanglement_entropy_indices", &cefe::core::EntropicFieldEngine::compute_entanglement_entropy_indices, py::arg("subregion_indices"))
+        .def("initialize_field_state", &cefe::core::EntropicFieldEngine::initialize_field_state, py::arg("target_t"), py::arg("temperature") = 0.0)
         .def("step_forward", &cefe::core::EntropicFieldEngine::step_forward, py::arg("dt"))
         .def("get_field_energy", &cefe::core::EntropicFieldEngine::get_field_energy)
         .def("get_state_size", &cefe::core::EntropicFieldEngine::get_state_size);

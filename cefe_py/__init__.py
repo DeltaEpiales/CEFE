@@ -12,7 +12,10 @@ try:
         EntropicFieldEngine,
         Metric,
         MinkowskiMetric,
-        SchwarzschildMetric
+        SchwarzschildMetric,
+        AntiDeSitterMetric,
+        FLRWMetric,
+        KerrMetric
     )
 except ImportError as e:
     raise ImportError(f"Failed to load C++ extension: {e}. Please build the project first.")
@@ -24,5 +27,8 @@ __all__ = [
     "EntropicFieldEngine",
     "Metric",
     "MinkowskiMetric",
-    "SchwarzschildMetric"
+    "SchwarzschildMetric",
+    "AntiDeSitterMetric",
+    "FLRWMetric",
+    "KerrMetric"
 ]

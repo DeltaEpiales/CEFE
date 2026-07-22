@@ -22,9 +22,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(eigen)
 
+# Fetch Spectra
+FetchContent_Declare(
+  spectra
+  GIT_REPOSITORY https://github.com/yixuan/spectra.git
+  GIT_TAG v1.0.1
+)
+FetchContent_MakeAvailable(spectra)
+
 # Includes
 include_directories(include)
 include_directories(${eigen_SOURCE_DIR})
+include_directories(${spectra_SOURCE_DIR}/include)
 
 # Python module
 pybind11_add_module(cefe_core

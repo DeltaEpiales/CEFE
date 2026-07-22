@@ -26,6 +26,7 @@ private:
     std::vector<std::size_t> slice_indices;
     double mass;
     BoundaryType boundary_condition;
+    double interaction_coupling;
     
     // Dynamic field state
     FieldState current_state;
@@ -36,11 +37,15 @@ public:
     
     void set_mass(double m);
     void set_boundary_condition(BoundaryType bc);
+    void set_interaction_coupling(double lambda) { interaction_coupling = lambda; }
     
-    void evolve_to_slice(double target_t);
+    void evolve_to_slice(double target_t, double temperature = 0.0);
+    void evolve_to_slice_sparse(double target_t, int num_modes, double temperature = 0.0);
+    
     double compute_entanglement_entropy(double subregion_radius);
+    double compute_entanglement_entropy_indices(const std::vector<int>& subregion_indices);
     
-    void initialize_field_state(double target_t);
+    void initialize_field_state(double target_t, double temperature = 0.0);
     void step_forward(double dt);
     
     int get_state_size() const { return covariance_C.rows(); }

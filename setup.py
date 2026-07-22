@@ -25,7 +25,6 @@ class CMakeBuild(build_ext):
 
         build_args = []
         if sys.platform.startswith("win"):
-            cmake_args += ["-G", "Visual Studio 17 2022", "-A", "x64"]
             build_args += ["--config", "Release"]
 
         if not os.path.exists(self.build_temp):

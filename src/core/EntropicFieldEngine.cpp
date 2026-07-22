@@ -99,7 +99,7 @@ double EntropicFieldEngine::compute_entanglement_entropy(double subregion_radius
     Eigen::MatrixXd C_A(NA, NA);
     Eigen::MatrixXd P_A(NA, NA);
     
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for
     for (int i = 0; i < NA; ++i) {
         for (int j = 0; j < NA; ++j) {
             C_A(i, j) = covariance_C(sub_A[i], sub_A[j]);

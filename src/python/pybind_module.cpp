@@ -7,6 +7,7 @@
 #include "cefe/geometry/CausalDiamond.hpp"
 #include "cefe/geometry/Metric.hpp"
 #include "cefe/core/EntropicFieldEngine.hpp"
+#include "../../dynamic_tensors/DynamicTensorEngine.hpp"
 
 namespace py = pybind11;
 
@@ -75,4 +76,10 @@ PYBIND11_MODULE(cefe_core, m) {
         .def("step_forward", &cefe::core::EntropicFieldEngine::step_forward, py::arg("dt"))
         .def("get_field_energy", &cefe::core::EntropicFieldEngine::get_field_energy)
         .def("get_state_size", &cefe::core::EntropicFieldEngine::get_state_size);
+
+    // Bind DynamicTensorEngine
+    py::class_<cefe::dynamic_tensors::DynamicTensorEngine>(m, "DynamicTensorEngine")
+        .def(py::init<std::shared_ptr<cefe::geometry::CausalDiamondGrid>>(), py::arg("grid"))
+        .def("compute_stress_energy_tensor", &cefe::dynamic_tensors::DynamicTensorEngine::compute_stress_energy_tensor, py::arg("field_phi"), py::arg("mass"))
+        .def("linearized_einstein_update", &cefe::dynamic_tensors::DynamicTensorEngine::linearized_einstein_update, py::arg("time_step"), py::arg("G_constant") = 1.0);
 }

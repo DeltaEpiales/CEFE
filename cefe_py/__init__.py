@@ -15,7 +15,8 @@ try:
         SchwarzschildMetric,
         AntiDeSitterMetric,
         FLRWMetric,
-        KerrMetric
+        KerrMetric,
+        DynamicTensorEngine
     )
 except ImportError as e:
     raise ImportError(f"Failed to load C++ extension: {e}. Please build the project first.")
@@ -30,5 +31,6 @@ __all__ = [
     "SchwarzschildMetric",
     "AntiDeSitterMetric",
     "FLRWMetric",
-    "KerrMetric"
+    "KerrMetric",
+    "DynamicTensorEngine"
 ]

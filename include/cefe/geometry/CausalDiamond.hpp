@@ -35,6 +35,7 @@ public:
     double get_spacing() const { return ds; }
     std::size_t get_dof() const { return active_dof; }
     const std::vector<GridPoint>& get_points() const { return points; }
+    std::vector<GridPoint>& get_mutable_points() { return points; }
     double get_area_bound(double subregion_radius) const;
     
     struct SpatialSlice {

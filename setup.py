@@ -58,7 +58,7 @@ setup(
     url="https://github.com/DeltaEpiales/CEFE",
     ext_modules=[CMakeExtension("cefe_py.cefe_core")],
     cmdclass={"build_ext": CMakeBuild},
-    packages=["cefe_py"],
+    packages=["cefe_py", "cefe_lab"],
     install_requires=[
         "numpy>=1.20",
         "matplotlib>=3.5",

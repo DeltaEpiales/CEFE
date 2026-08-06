@@ -45,6 +45,8 @@ pybind11_add_module(cefe_core
     src/python/pybind_module.cpp
     src/geometry/CausalDiamond.cpp
     src/core/EntropicFieldEngine.cpp
+    src/core/QuantumWaveEngine.cpp
+    src/core/LatticeQFTEngine.cpp
     dynamic_tensors/DynamicTensorEngine.cpp
 )
 

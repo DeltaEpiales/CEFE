@@ -93,8 +93,8 @@ CausalDiamondGrid::SpatialSlice CausalDiamondGrid::build_spatial_laplacian(doubl
                 double proper_ds = metric->get_spatial_distance(p1.t, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
                 double inv_ds2 = 1.0 / (proper_ds * proper_ds);
                 
-                triplets.push_back(Eigen::Triplet<double>(i, j, -inv_ds2));
-                triplets.push_back(Eigen::Triplet<double>(j, i, -inv_ds2));
+                triplets.push_back(Eigen::Triplet<double>(i, j, inv_ds2));
+                triplets.push_back(Eigen::Triplet<double>(j, i, inv_ds2));
                 diag[i] += inv_ds2;
                 diag[j] += inv_ds2;
             }
@@ -102,7 +102,7 @@ CausalDiamondGrid::SpatialSlice CausalDiamondGrid::build_spatial_laplacian(doubl
     }
     
     for (std::size_t i = 0; i < N; ++i) {
-        triplets.push_back(Eigen::Triplet<double>(i, i, diag[i]));
+        triplets.push_back(Eigen::Triplet<double>(i, i, -diag[i]));
     }
     
     slice.laplacian.setFromTriplets(triplets.begin(), triplets.end());

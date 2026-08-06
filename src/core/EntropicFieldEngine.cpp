@@ -31,7 +31,7 @@ void EntropicFieldEngine::evolve_to_slice(double target_t, double temperature) {
     std::size_t N = slice.laplacian.rows();
     if (N == 0) return;
     
-    Eigen::MatrixXd W = Eigen::MatrixXd(slice.laplacian);
+    Eigen::MatrixXd W = -Eigen::MatrixXd(slice.laplacian);
     
     #pragma omp parallel for
     for (int i = 0; i < N; ++i) {
@@ -66,7 +66,7 @@ void EntropicFieldEngine::evolve_to_slice_sparse(double target_t, int num_modes,
     std::size_t N = slice.laplacian.rows();
     if (N == 0) return;
     
-    Eigen::SparseMatrix<double> W = slice.laplacian;
+    Eigen::SparseMatrix<double> W = -slice.laplacian;
     for (int k=0; k<W.outerSize(); ++k) {
         for (Eigen::SparseMatrix<double>::InnerIterator it(W, k); it; ++it) {
             if (it.row() == it.col()) {
@@ -110,7 +110,7 @@ void EntropicFieldEngine::initialize_field_state(double target_t, double tempera
     auto slice = grid->build_spatial_laplacian(target_t);
     std::size_t N = slice.laplacian.rows();
     
-    W_sparse = slice.laplacian;
+    W_sparse = -slice.laplacian;
     for (int k=0; k<W_sparse.outerSize(); ++k) {
         for (Eigen::SparseMatrix<double>::InnerIterator it(W_sparse, k); it; ++it) {
             if (it.row() == it.col()) {
@@ -122,7 +122,18 @@ void EntropicFieldEngine::initialize_field_state(double target_t, double tempera
     current_state.phi = Eigen::VectorXd::Zero(N);
     current_state.pi = Eigen::VectorXd::Zero(N);
     if (N > 0) {
-        current_state.phi(N / 2) = 1.0; // Initial perturbation
+        int center_idx = 0;
+        double min_dist = 1e9;
+        const auto& points = grid->get_points();
+        for (std::size_t i = 0; i < N; ++i) {
+            const auto& p = points[slice.original_indices[i]];
+            double dist = std::sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+            if (dist < min_dist) {
+                min_dist = dist;
+                center_idx = i;
+            }
+        }
+        current_state.phi(center_idx) = 1.0; // Initial perturbation
     }
 }
 
@@ -179,14 +190,13 @@ double EntropicFieldEngine::compute_entanglement_entropy_indices(const std::vect
     
     for (int k = 0; k < CP.rows(); ++k) {
         double nu2 = solver.eigenvalues()[k].real();
-        if (nu2 < 0.25) nu2 = 0.25; 
-        double nu = std::sqrt(nu2);
+        double nu = std::sqrt(std::max(0.25, nu2)); // assure physical minimum
         
         double x1 = nu + 0.5;
-        double x2 = nu - 0.5;
-        if (x2 < 1e-12) x2 = 1e-12; 
+        double x2 = std::max(0.0, nu - 0.5); // x2 can be perfectly zero
         
-        entropy += x1 * std::log(x1) - x2 * std::log(x2);
+        if (x1 > 0.0) entropy += x1 * std::log(x1);
+        if (x2 > 0.0) entropy -= x2 * std::log(x2);
     }
     
     return entropy;

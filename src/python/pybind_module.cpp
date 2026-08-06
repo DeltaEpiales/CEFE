@@ -7,6 +7,8 @@
 #include "cefe/geometry/CausalDiamond.hpp"
 #include "cefe/geometry/Metric.hpp"
 #include "cefe/core/EntropicFieldEngine.hpp"
+#include "cefe/core/QuantumWaveEngine.hpp"
+#include "cefe/core/LatticeQFTEngine.hpp"
 #include "../../dynamic_tensors/DynamicTensorEngine.hpp"
 
 namespace py = pybind11;
@@ -75,11 +77,43 @@ PYBIND11_MODULE(cefe_core, m) {
         .def("initialize_field_state", &cefe::core::EntropicFieldEngine::initialize_field_state, py::arg("target_t"), py::arg("temperature") = 0.0)
         .def("step_forward", &cefe::core::EntropicFieldEngine::step_forward, py::arg("dt"))
         .def("get_field_energy", &cefe::core::EntropicFieldEngine::get_field_energy)
-        .def("get_state_size", &cefe::core::EntropicFieldEngine::get_state_size);
+        .def("get_state_size", &cefe::core::EntropicFieldEngine::get_state_size)
+        .def("get_covariance_C", &cefe::core::EntropicFieldEngine::get_covariance_C)
+        .def("get_covariance_P", &cefe::core::EntropicFieldEngine::get_covariance_P)
+        .def("get_slice_indices", &cefe::core::EntropicFieldEngine::get_slice_indices);
 
     // Bind DynamicTensorEngine
     py::class_<cefe::dynamic_tensors::DynamicTensorEngine>(m, "DynamicTensorEngine")
         .def(py::init<std::shared_ptr<cefe::geometry::CausalDiamondGrid>>(), py::arg("grid"))
         .def("compute_stress_energy_tensor", &cefe::dynamic_tensors::DynamicTensorEngine::compute_stress_energy_tensor, py::arg("field_phi"), py::arg("mass"))
         .def("linearized_einstein_update", &cefe::dynamic_tensors::DynamicTensorEngine::linearized_einstein_update, py::arg("time_step"), py::arg("G_constant") = 1.0);
+
+    // Bind QuantumWaveEngine
+    py::class_<cefe::core::QuantumWaveEngine>(m, "QuantumWaveEngine")
+        .def(py::init<std::shared_ptr<cefe::geometry::CausalDiamondGrid>>(), py::arg("grid"))
+        .def("set_mass", &cefe::core::QuantumWaveEngine::set_mass, py::arg("m"))
+        .def("set_hbar", &cefe::core::QuantumWaveEngine::set_hbar, py::arg("h"))
+        .def("initialize_state", &cefe::core::QuantumWaveEngine::initialize_state, py::arg("target_t"))
+        .def("set_gaussian_packet", &cefe::core::QuantumWaveEngine::set_gaussian_packet, py::arg("x0"), py::arg("y0"), py::arg("sigma"), py::arg("px"), py::arg("py"))
+        .def("set_double_slit_potential", &cefe::core::QuantumWaveEngine::set_double_slit_potential, py::arg("slit_width"), py::arg("slit_separation"), py::arg("barrier_thickness"), py::arg("barrier_x"))
+        .def("set_atomic_potential", &cefe::core::QuantumWaveEngine::set_atomic_potential, py::arg("Z"), py::arg("softening"))
+        .def("build_hamiltonian", &cefe::core::QuantumWaveEngine::build_hamiltonian, py::arg("target_t"))
+        .def("prepare_crank_nicolson", &cefe::core::QuantumWaveEngine::prepare_crank_nicolson, py::call_guard<py::gil_scoped_release>(), py::arg("dt"))
+        .def("step_forward", &cefe::core::QuantumWaveEngine::step_forward, py::call_guard<py::gil_scoped_release>())
+        .def("get_total_probability", &cefe::core::QuantumWaveEngine::get_total_probability)
+        .def("get_probability_density", &cefe::core::QuantumWaveEngine::get_probability_density)
+        .def("get_slice_indices", &cefe::core::QuantumWaveEngine::get_slice_indices);
+
+    // Bind LatticeQFTEngine
+    py::class_<cefe::core::LatticeQFTEngine>(m, "LatticeQFTEngine")
+        .def(py::init<std::shared_ptr<cefe::geometry::CausalDiamondGrid>>())
+        .def("set_mass", &cefe::core::LatticeQFTEngine::set_mass)
+        .def("set_coupling", &cefe::core::LatticeQFTEngine::set_coupling)
+        .def("initialize_state", &cefe::core::LatticeQFTEngine::initialize_state)
+        .def("set_gaussian_packet", &cefe::core::LatticeQFTEngine::set_gaussian_packet)
+        .def("set_opposing_packets", &cefe::core::LatticeQFTEngine::set_opposing_packets)
+        .def("build_laplacian", &cefe::core::LatticeQFTEngine::build_laplacian)
+        .def("step_forward", &cefe::core::LatticeQFTEngine::step_forward, py::call_guard<py::gil_scoped_release>())
+        .def("get_field_amplitude", &cefe::core::LatticeQFTEngine::get_field_amplitude)
+        .def("get_total_energy", &cefe::core::LatticeQFTEngine::get_total_energy);
 }

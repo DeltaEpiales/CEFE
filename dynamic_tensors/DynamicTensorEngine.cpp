@@ -20,7 +20,7 @@ Eigen::Matrix4d DynamicTensorEngine::get_local_metric(std::size_t node_index) co
     return g;
 }
 
-void DynamicTensorEngine::compute_stress_energy_tensor(const Eigen::VectorXd& field_phi, double mass) {
+void DynamicTensorEngine::compute_stress_energy_tensor(const std::vector<double>& field_phi, double mass) {
     std::size_t num_nodes = grid_ptr_->get_points().size();
     T_mu_nu_field_.resize(num_nodes, Eigen::Matrix4d::Zero());
 
@@ -47,7 +47,7 @@ void DynamicTensorEngine::compute_stress_energy_tensor(const Eigen::VectorXd& fi
         }
         
         if (nearest != i) {
-            double d_phi = field_phi(nearest) - field_phi(i);
+            double d_phi = field_phi[nearest] - field_phi[i];
             // Approximate spatial radial gradient
             double ri = std::sqrt(nodes[i].x*nodes[i].x + nodes[i].y*nodes[i].y + nodes[i].z*nodes[i].z);
             double rn = std::sqrt(nodes[nearest].x*nodes[nearest].x + nodes[nearest].y*nodes[nearest].y + nodes[nearest].z*nodes[nearest].z);
@@ -71,7 +71,7 @@ void DynamicTensorEngine::compute_stress_energy_tensor(const Eigen::VectorXd& fi
         }
 
         // 3. Potential term: m^2 phi^2
-        double potential = mass * mass * field_phi(i) * field_phi(i);
+        double potential = mass * mass * field_phi[i] * field_phi[i];
         
         // 4. Construct T_mu_nu
         for (int mu = 0; mu < 4; ++mu) {
@@ -83,7 +83,9 @@ void DynamicTensorEngine::compute_stress_energy_tensor(const Eigen::VectorXd& fi
 }
 
 void DynamicTensorEngine::linearized_einstein_update(double time_step, double G_constant) {
-    if (T_mu_nu_field_.empty()) return;
+    if (T_mu_nu_field_.empty()) {
+        return;
+    }
 
     auto& nodes = grid_ptr_->get_mutable_points();
     
@@ -91,6 +93,9 @@ void DynamicTensorEngine::linearized_einstein_update(double time_step, double G_
     double coupling = 8.0 * 3.14159265358979323846 * G_constant * time_step;
 
     for (std::size_t i = 0; i < nodes.size(); ++i) {
+        if (i >= T_mu_nu_field_.size()) {
+            break;
+        }
         double energy_density = T_mu_nu_field_[i](0, 0); // T_00
         
         double warp_factor = coupling * energy_density;

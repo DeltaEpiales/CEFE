@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <algorithm>
 
 namespace cefe {
 namespace geometry {
@@ -35,20 +36,39 @@ public:
     
     bool is_inside_causal_diamond(double t, double x, double y, double z, double R) const override {
         double r = std::sqrt(x*x + y*y + z*z);
-        if (r <= Rs) return false; // Exclude interior of horizon
+        if (r <= Rs || R <= Rs) return false; // Exclude interior of horizon
         
-        // Approximate tortoise coordinate lightcone deformation
-        double local_c = 1.0 - Rs / r; 
-        return r <= R - std::abs(t) * local_c;
+        // Exact tortoise coordinate lightcone deformation
+        double r_star = r + Rs * std::log(std::abs(r/Rs - 1.0));
+        double R_star = R + Rs * std::log(std::abs(R/Rs - 1.0));
+        
+        return (R_star - r_star) >= std::abs(t);
     }
     
     double get_spatial_distance(double t, double x1, double y1, double z1, double x2, double y2, double z2) const override {
-        double r1 = std::sqrt(x1*x1 + y1*y1 + z1*z1);
-        double dr2 = (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2);
+        // Simpson's rule integration along the path for proper distance
+        double dist = 0.0;
+        int steps = 10;
+        double dx = (x2 - x1) / steps;
+        double dy = (y2 - y1) / steps;
+        double dz = (z2 - z1) / steps;
+        double dl2 = dx*dx + dy*dy + dz*dz;
         
-        if (r1 <= Rs) return std::sqrt(dr2);
-        // Spatial distance is dilated near the horizon
-        return std::sqrt(dr2) / std::sqrt(1.0 - Rs / r1);
+        for (int i = 0; i < steps; ++i) {
+            double cx = x1 + (i + 0.5) * dx;
+            double cy = y1 + (i + 0.5) * dy;
+            double cz = z1 + (i + 0.5) * dz;
+            double cr = std::sqrt(cx*cx + cy*cy + cz*cz);
+            if (cr <= Rs) return std::sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
+            
+            double r_start = std::sqrt(std::pow(x1 + i*dx, 2) + std::pow(y1 + i*dy, 2) + std::pow(z1 + i*dz, 2));
+            double r_end = std::sqrt(std::pow(x1 + (i+1)*dx, 2) + std::pow(y1 + (i+1)*dy, 2) + std::pow(z1 + (i+1)*dz, 2));
+            double dr = r_end - r_start;
+            
+            double step_dist = std::sqrt(dl2 + (Rs / (cr - Rs)) * dr * dr);
+            dist += step_dist;
+        }
+        return dist;
     }
 };
 
@@ -60,15 +80,34 @@ public:
     
     bool is_inside_causal_diamond(double t, double x, double y, double z, double R) const override {
         double r = std::sqrt(x*x + y*y + z*z);
-        // Light travels faster in coordinate r at large r in AdS
-        double max_r = R * std::cosh(std::abs(t)/L); // simplistic causal bound
-        return r <= max_r;
+        // Exact causal bounds using AdS time
+        double r_star = L * std::atan(r / L);
+        double R_star = L * std::atan(R / L);
+        return (R_star - r_star) >= std::abs(t);
     }
     
     double get_spatial_distance(double t, double x1, double y1, double z1, double x2, double y2, double z2) const override {
-        double r1 = std::sqrt(x1*x1 + y1*y1 + z1*z1);
-        double dr2 = (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2);
-        return std::sqrt(dr2) / std::sqrt(1.0 + (r1*r1)/(L*L));
+        double dist = 0.0;
+        int steps = 10;
+        double dx = (x2 - x1) / steps;
+        double dy = (y2 - y1) / steps;
+        double dz = (z2 - z1) / steps;
+        double dl2 = dx*dx + dy*dy + dz*dz;
+        
+        for (int i = 0; i < steps; ++i) {
+            double cx = x1 + (i + 0.5) * dx;
+            double cy = y1 + (i + 0.5) * dy;
+            double cz = z1 + (i + 0.5) * dz;
+            double cr = std::sqrt(cx*cx + cy*cy + cz*cz);
+            
+            double r_start = std::sqrt(std::pow(x1 + i*dx, 2) + std::pow(y1 + i*dy, 2) + std::pow(z1 + i*dz, 2));
+            double r_end = std::sqrt(std::pow(x1 + (i+1)*dx, 2) + std::pow(y1 + (i+1)*dy, 2) + std::pow(z1 + (i+1)*dz, 2));
+            double dr = r_end - r_start;
+            
+            double step_dist = std::sqrt(std::max(0.0, dl2 - (cr*cr / (L*L + cr*cr)) * dr * dr));
+            dist += step_dist;
+        }
+        return dist;
     }
 };
 
@@ -78,8 +117,6 @@ public:
     
     bool is_inside_causal_diamond(double t, double x, double y, double z, double R) const override {
         double r = std::sqrt(x*x + y*y + z*z);
-        // Matter-dominated expansion a(t) ~ t^(2/3)
-        // Assume t_0 = 1 for current conformal time scale
         double a_t = std::pow(std::abs(t) + 1.0, 2.0/3.0);
         return r <= (R - std::abs(t)) / a_t;
     }
@@ -100,25 +137,45 @@ public:
     
     bool is_inside_causal_diamond(double t, double x, double y, double z, double R) const override {
         double r = std::sqrt(x*x + y*y + z*z);
-        double horizon = M + std::sqrt(M*M - a*a);
-        if (r <= horizon) return false;
+        double horizon = M + std::sqrt(std::max(0.0, M*M - a*a));
+        if (r <= horizon || R <= horizon) return false;
         
-        // Approximation of lightcone dragging
-        double local_c = 1.0 - (2.0 * M * r) / (r*r + a*a); 
-        if (local_c < 0) local_c = 0.1; // Ergosphere simplistic bound
-        return r <= R - std::abs(t) * local_c;
+        // Approximate tortoise coordinate for Kerr
+        double r_star = r + (2.0*M*horizon)/(horizon - (M - std::sqrt(std::max(0.0, M*M - a*a)))) * std::log(std::abs(r - horizon));
+        double R_star = R + (2.0*M*horizon)/(horizon - (M - std::sqrt(std::max(0.0, M*M - a*a)))) * std::log(std::abs(R - horizon));
+        
+        return (R_star - r_star) >= std::abs(t);
     }
     
     double get_spatial_distance(double t, double x1, double y1, double z1, double x2, double y2, double z2) const override {
-        double r1 = std::sqrt(x1*x1 + y1*y1 + z1*z1);
-        double dr2 = (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2);
+        double dist = 0.0;
+        int steps = 10;
+        double dx = (x2 - x1) / steps;
+        double dy = (y2 - y1) / steps;
+        double dz = (z2 - z1) / steps;
         
-        double horizon = M + std::sqrt(M*M - a*a);
-        if (r1 <= horizon) return std::sqrt(dr2);
+        double horizon = M + std::sqrt(std::max(0.0, M*M - a*a));
         
-        double delta = r1*r1 - 2.0*M*r1 + a*a;
-        double rho2 = r1*r1; // Equatorial approx z=0
-        return std::sqrt(dr2) * std::sqrt(rho2 / delta);
+        for (int i = 0; i < steps; ++i) {
+            double cx = x1 + (i + 0.5) * dx;
+            double cy = y1 + (i + 0.5) * dy;
+            double cz = z1 + (i + 0.5) * dz;
+            double cr = std::sqrt(cx*cx + cy*cy + cz*cz);
+            if (cr <= horizon) return std::sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
+            
+            double rho2 = cr*cr + a*a*cz*cz/(cr*cr); 
+            double delta = cr*cr - 2.0*M*cr + a*a;
+            if (delta < 1e-6) delta = 1e-6; // Avoid division by zero very close to horizon
+            
+            double r_start = std::sqrt(std::pow(x1 + i*dx, 2) + std::pow(y1 + i*dy, 2) + std::pow(z1 + i*dz, 2));
+            double r_end = std::sqrt(std::pow(x1 + (i+1)*dx, 2) + std::pow(y1 + (i+1)*dy, 2) + std::pow(z1 + (i+1)*dz, 2));
+            double dr = r_end - r_start;
+            
+            double dl2 = dx*dx + dy*dy + dz*dz;
+            double step_dist = std::sqrt(std::max(0.0, dl2 + (rho2/delta - 1.0)*dr*dr));
+            dist += step_dist;
+        }
+        return dist;
     }
 };
 

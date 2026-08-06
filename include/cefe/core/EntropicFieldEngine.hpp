@@ -50,6 +50,10 @@ public:
     
     int get_state_size() const { return covariance_C.rows(); }
     double get_field_energy() const;
+    
+    const Eigen::MatrixXd& get_covariance_C() const { return covariance_C; }
+    const Eigen::MatrixXd& get_covariance_P() const { return covariance_P; }
+    const std::vector<std::size_t>& get_slice_indices() const { return slice_indices; }
 };
 
 } // namespace core

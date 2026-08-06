@@ -24,30 +24,44 @@ PART 2 -- ARROW OF TIME: fine- vs coarse-grained entropy under unitary
     Gaussian packet on the t=0 causal-diamond slice:
         purity Tr(rho^2) must stay exactly 1;
         coarse-grained position Shannon entropy must grow.
+
+Backend: with cefe_core >= v0.2.0 present, Part 1 runs on the engine's own
+covariance matrices (get_covariance_C/P) and Part 2 adds a 3D unitarity
+cross-check with the engine's QuantumWaveEngine.  The paper's primary 2D
+configuration stays on the line-identical NumPy port (the compiled engine's
+slices are intrinsically 3+1D; the 2D study is a numerical convenience).
 """
 
 import numpy as np
+from engine_backend import HAVE_ENGINE, BACKEND, vacuum_slice, ce
 from entropic_gravity_verification import (
     build_t0_slice, build_laplacian, covariance_matrices, entanglement_entropy,
 )
 
 print("=" * 74)
 print("PART 1: FIRST LAW OF ENTANGLEMENT  dS_A = d<K_A>")
+print(f"backend: {BACKEND}")
 print("=" * 74)
 
 # ---- vacuum state on t=0 slice --------------------------------------------
 a, R_d, m0, r_A = 0.8, 4.0, 1.0, 1.6
-pts = build_t0_slice(R_d, a)
-coords = np.array([[p[3], p[4], p[5]] for p in pts])
-L = build_laplacian(pts, a)
-C, P = covariance_matrices(L, m0)
+coords, C, P = vacuum_slice(R_d, a, m0)
 
 r = np.linalg.norm(coords, axis=1)
 A = np.where(r <= r_A)[0]
 CA = C[np.ix_(A, A)]
 PA = P[np.ix_(A, A)]
 nA = len(A)
-print(f"subregion A: {nA} dof (r <= {r_A}), full slice: {len(pts)} dof")
+print(f"subregion A: {nA} dof (r <= {r_A}), full slice: {len(coords)} dof")
+
+
+def perturbed_slice(**kw):
+    """Covariance pair for a perturbed state on the SAME lattice; the engine
+    rebuilds the grid deterministically, so verify the ordering is unchanged."""
+    coords2, C2, P2 = vacuum_slice(R_d, a, kw.pop("m", m0), **kw)
+    if not np.allclose(coords2, coords):
+        raise RuntimeError("slice ordering changed between engine calls")
+    return C2, P2
 
 # ---- Williamson decomposition of (CA, PA) ---------------------------------
 evalsC, UC = np.linalg.eigh(CA)
@@ -98,7 +112,7 @@ print(f"S_A(vac) = {S_vac:.6f}   <K_A>(vac) = {K_vac:.6f}")
 print("\n(i) mass quench  m -> m + dm")
 print(f"{'dm':>7} {'dS_A':>11} {'d<K_A>':>11} {'|diff|/dS':>11}")
 for dm in [0.02, 0.05, 0.10, 0.20]:
-    C2, P2 = covariance_matrices(L, m0 + dm)
+    C2, P2 = perturbed_slice(m=m0 + dm)
     CA2, PA2 = C2[np.ix_(A, A)], P2[np.ix_(A, A)]
     S_new = entropy_from_nu(symplectic_spectrum(CA2, PA2))
     K_new = K_expectation(CA2, PA2)
@@ -110,7 +124,7 @@ for dm in [0.02, 0.05, 0.10, 0.20]:
 print("\n(ii) thermal excitation  T > 0")
 print(f"{'T':>7} {'dS_A':>11} {'d<K_A>':>11} {'|diff|/dS':>11}")
 for T in [0.02, 0.05, 0.10, 0.20]:
-    C2, P2 = covariance_matrices(L, m0, temperature=T)
+    C2, P2 = perturbed_slice(temperature=T)
     CA2, PA2 = C2[np.ix_(A, A)], P2[np.ix_(A, A)]
     S_new = entropy_from_nu(symplectic_spectrum(CA2, PA2))
     K_new = K_expectation(CA2, PA2)
@@ -187,6 +201,53 @@ for n in range(1, steps + 1):
 
 print(f"\npurity drift over run: {abs(purities[-1] - 1.0):.2e}  (unitary: exact 0)")
 print(f"coarse-grained entropy: {S_cg[0]:.4f} -> {max(S_cg):.4f}  (grew: {max(S_cg) > S_cg[0]})")
+
+# ---- engine cross-check: QuantumWaveEngine unitarity in 3D -----------------
+if HAVE_ENGINE:
+    print("\n-- engine cross-check (3D): QuantumWaveEngine Crank-Nicolson --")
+    grid = ce.CausalDiamondGrid(radius=2.0, spacing=0.12)
+    qwe = ce.QuantumWaveEngine(grid)
+    qwe.set_mass(1.0)
+    qwe.set_hbar(1.0)
+    qwe.initialize_state(target_t=0.0)
+    qwe.set_gaussian_packet(x0=-1.0, y0=0.0, sigma=0.15, px=8.0, py=0.0)
+    qwe.build_hamiltonian(target_t=0.0)
+    dt3 = 0.003
+    qwe.prepare_crank_nicolson(dt3)
+
+    idx3 = list(qwe.get_slice_indices())
+    ptsg = grid.get_points()
+    coords3 = np.array([[ptsg[i].x, ptsg[i].y, ptsg[i].z] for i in idx3])
+    bw = 4 * 0.12
+    bins3 = {}
+    for i in range(len(coords3)):
+        key = (int(np.floor(coords3[i, 0] / bw)),
+               int(np.floor(coords3[i, 1] / bw)),
+               int(np.floor(coords3[i, 2] / bw)))
+        bins3.setdefault(key, []).append(i)
+
+    def coarse3():
+        rho = np.asarray(qwe.get_probability_density(), dtype=float)
+        tot = rho.sum()
+        if tot <= 0:
+            return 0.0
+        p = rho / tot
+        s = 0.0
+        for cell in bins3.values():
+            pc = p[cell].sum()
+            if pc > 1e-15:
+                s -= pc * np.log(pc)
+        return s
+
+    P0, S0 = qwe.get_total_probability(), coarse3()
+    steps3 = 220
+    for n in range(1, steps3 + 1):
+        qwe.step_forward()
+    P1, S1 = qwe.get_total_probability(), coarse3()
+    print(f"    slice dof = {len(coords3)},  {steps3} CN steps of dt = {dt3}")
+    print(f"    total-probability drift: {abs(P1 - P0):.2e}  (unitary: exact 0)")
+    print(f"    3D coarse-grained entropy: {S0:.4f} -> {S1:.4f}  (grew: {S1 > S0})")
+
 print("=" * 74)
 print("DONE")
 print("=" * 74)

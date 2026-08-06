@@ -26,33 +26,30 @@ This script tests the four pillars the CEFE engine CAN decide:
           boundary-mode and entropy-shell counts must scale as R^1.5.
           Smooth holography predicts R^2.
 
-Uses the compiled cefe_py engine if importable; otherwise falls back to the
-line-identical NumPy port (entropic_gravity_verification.py).
+Uses the compiled cefe_py engine if importable (>= v0.2.0, via the
+get_covariance_C/P bindings): TESTS A, B, D then run on the engine's own
+covariance matrices, with a three-way cross-check (engine internal vs
+exported matrices vs NumPy port).  TEST C is a 2D disk cross-section study
+and stays on the port by design (the engine is intrinsically 3+1D).
+Without the engine, everything falls back to the line-identical NumPy port
+(entropic_gravity_verification.py).
 """
 
 import numpy as np
 
-try:
-    import cefe_py as ce  # noqa: F401
-    HAVE_ENGINE = True
-except Exception:
-    HAVE_ENGINE = False
-
+from engine_backend import HAVE_ENGINE, BACKEND, vacuum_slice, engine_crosscheck
 from entropic_gravity_verification import (
-    build_t0_slice, build_laplacian, covariance_matrices,
-    entanglement_entropy, power_law_fit,
+    covariance_matrices, entanglement_entropy, power_law_fit,
 )
 
 print("=" * 74)
-print("DECISIVE SUITE: IS GRAVITY ENTROPIC?  (CEFE engine" +
-      (" [compiled]" if HAVE_ENGINE else " [NumPy port, line-identical]") + ")")
+print("DECISIVE SUITE: IS GRAVITY ENTROPIC?")
+print(f"backend: {BACKEND}")
 print("=" * 74)
 
 
 def entropy_profile(R_d, a, m, radii):
-    pts = build_t0_slice(R_d, a)
-    coords = np.array([[p[3], p[4], p[5]] for p in pts])
-    C, P = covariance_matrices(build_laplacian(pts, a), m)
+    coords, C, P = vacuum_slice(R_d, a, m)
     return coords, C, P, np.array([entanglement_entropy(C, P, coords, r) for r in radii])
 
 
@@ -76,6 +73,8 @@ kappas_m1 = [k[4] for k in kappa_results if k[1] == 1.0]
 print(f"-> area exponent alpha = {alphas.mean():.3f} +/- {alphas.std():.3f}  (theory: 2.000)")
 print(f"-> kappa (m=1.0) = {np.mean(kappas_m1):.4f}  (Srednicki 1993 massless scalar: 0.30)")
 print(f"   (m=0.1 values inflated: xi=1/m=10 exceeds box R=4 -- finite-size, not a discrepancy)")
+if HAVE_ENGINE:
+    engine_crosscheck(R_d=4.0, a=0.8, m=1.0)
 
 # --------------------------------------------------------------------------
 print("\n--- TEST B: COMPLETE VERLINDE LOOP FROM MEASURED ENTROPY ONLY ---")
@@ -106,6 +105,9 @@ print("\n--- TEST C: UV-FINITE MUTUAL INFORMATION (cutoff-stable bit count) ---"
 # Done on the 2D disk cross-section (same Srednicki physics, finer affordable
 # lattices): gap must resolve to MANY lattice spacings for the boundary
 # divergences to cancel.  A = disk r<=0.8 ; B = annulus 1.4<r<=2.0 (gap 0.6).
+# NOTE: this test stays on the NumPy port by design -- the compiled engine's
+# causal-diamond slices are intrinsically 3+1D, while this is a deliberate
+# 2D cutoff-scaling study.
 def disk_slice(R, a):
     steps = int(np.ceil(R / a))
     pts = []
@@ -168,8 +170,7 @@ R_d = 4.5
 radii = np.linspace(1.5, 3.5, 13)
 coords, C, P, S = entropy_profile(R_d, a, 1.0, radii)
 _, alpha_D, r2D = power_law_fit(radii, S)
-pts = build_t0_slice(R_d, a)
-rr = np.linalg.norm(np.array([[p[3], p[4], p[5]] for p in pts]), axis=1)
+rr = np.linalg.norm(coords, axis=1)   # same lattice as the entropy measurement
 Rs = np.arange(1.2, 3.6, a)
 shell_counts = np.array([np.sum((rr > R - a) & (rr <= R)) for R in Rs], dtype=float)
 _, d_mode, r2m = power_law_fit(Rs[2:], shell_counts[2:])

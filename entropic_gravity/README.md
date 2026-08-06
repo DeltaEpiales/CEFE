@@ -28,10 +28,18 @@ python scripts/prove_entropic_gravity.py     # tests A–D
 python scripts/entanglement_first_law.py     # tests E–F
 ```
 
-Each script first tries the compiled engine (`cefe_core`); if the extension is
-not built for your Python, it falls back to a line-identical NumPy port of the
-Srednicki covariance-matrix construction (grid builder, graph Laplacian,
-symplectic-eigenvalue entropy). Requirements: `numpy`, `matplotlib`, `pillow`.
+With engine **v0.2.0+** built (`pip install .`, Python 3.10/3.11), Tests A, B, D
+and the first-law suite run directly on the engine's own Srednicki covariance
+matrices via the `get_covariance_C` / `get_covariance_P` bindings, and both
+scripts print an internal consistency cross-check (engine's
+`compute_entanglement_entropy` vs exported matrices vs the NumPy port; the
+first-law script also runs a 3D `QuantumWaveEngine` unitarity check). If the
+extension is not built for your Python, everything falls back to a
+line-identical NumPy port of the same construction — the paper's headline
+numbers above are the port values; engine values agree within lattice-detail
+tolerances. Test C (2D disk mutual-information study) and the 2D
+arrow-of-time run stay on the port by design: the engine's causal-diamond
+slices are intrinsically 3+1D. Requirements: `numpy`, `matplotlib`, `pillow`.
 
 ## Animations (`figures/`)
 

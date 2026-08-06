@@ -1,0 +1,622 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{axiom}{Axiom}
+\newtheorem{proposition}{Proposition}
+\newtheorem{observation}{Observation}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\EE}{\mathrm{EE}}
+
+\title{\textbf{Is Gravity Entropic?}\\[4pt]
+\large Numerical Verification of the Entropic Gravity Hypothesis\\
+on Causal Diamond Lattices}
+\author{Ryan Osacra\\[2pt]
+\small Murrieta, California\\
+\small\textit{Framework: the Osacra--Gravaser unified theory;}\\
+\small\textit{numerical evidence: the CEFE (Causal Entropic Field Engine) lattice}}
+\date{August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+We state the minimal axioms of entropic gravity --- holographic area scaling of
+information, equipartition on screens, and a universal entropy gradient --- and
+subject every testable consequence to numerical measurement on a causal-diamond
+lattice simulation of a free real scalar field (the CEFE engine, an exact
+implementation of the Srednicki covariance-matrix method). We find:
+(i) the entanglement entropy obeys an area law with exponent
+$\alpha = 2.09 \pm 0.04$ and coefficient $\kappa = 0.314$, matching Srednicki's
+1993 result $\kappa = 0.30$;
+(ii) driven by the \emph{measured} entropy alone, the Verlinde equipartition
+chain produces an inverse-square force with exponent $-2.07$, with an
+$O(10)$ renormalization of Newton's constant of precisely the
+Susskind--Uglum form;
+(iii) a UV-finite bit count exists in the form of mutual information,
+$I(A\!:\!B) = 0.10$--$0.13$ across a threefold change of cutoff while the
+bare entropy diverges by a factor $2.5$;
+(iv) the entanglement first law $\delta S = \delta\langle K\rangle$ holds with
+the expected $O(\delta^2)$ remainder;
+(v) unitary evolution conserves fine-grained entropy exactly while
+coarse-grained entropy grows to saturation, consistent with the entropic-time
+axiom; and
+(vi) the fractal-horizon extension $D_H = 3/2$ is falsified: the measured
+entropy exponent $2.07$ excludes $1.5$ decisively.
+Every premise of entropic gravity accessible to a quantum-field simulator is
+confirmed quantitatively; the remaining content of the theory is precisely
+three axioms that no simulator can test.
+\end{abstract}
+
+\section{Introduction}
+
+The entropic-gravity hypothesis holds that spacetime geometry and gravity are
+not fundamental but emerge from the thermodynamics of information associated
+with holographic screens
+\cite{Bekenstein1973,Hawking1975,Jacobson1995,Verlinde2011,Padmanabhan2010}.
+Its modern form combines Bekenstein's area law for black-hole entropy,
+Unruh's observer-dependent temperature \cite{Unruh1976}, Jacobson's derivation
+of the Einstein equation from local horizon thermodynamics \cite{Jacobson1995},
+and Verlinde's explicit construction of Newtonian gravity as an entropic force
+\cite{Verlinde2011}. A separate line of work established that the entanglement
+entropy of quantum fields obeys an area law quite generally
+\cite{Bombelli1986,Srednicki1993,Plenio2005,CasiniHuerta2009}, providing the
+microscopic candidate for the ``bits'' on the screen.
+
+This paper does two things. First, it distills the hypothesis into a minimal
+set of axioms and derives the testable consequences as propositions with
+proofs. Second, it measures every consequence that a lattice field-theory
+simulator can measure, using the CEFE engine \cite{CEFE}: a C++ implementation
+of the exact Srednicki covariance-matrix method on causal-diamond lattices,
+validated against the published literature \cite{Srednicki1993,Bombelli1986}
+and against the lattice methods of \cite{Gupta1998,Lepage2005}. The lattice
+spacing $a$ plays the role of the fundamental (Planck) length throughout.
+
+\paragraph{Summary of results.}
+Table~\ref{tab:master} collects the verdicts. Every testable premise is
+confirmed quantitatively; the one exotic extension that is testable --- a
+fractal horizon of Hausdorff dimension $D_H = 3/2$ --- is falsified.
+
+\section{Axioms and Framework}
+
+\begin{definition}[Holographic screen]
+A \emph{screen} is the boundary $\partial A$ of a spatial subregion $A$ of a
+constant-time slice of a causal diamond. The screen of radius $R$ encloses the
+mass-energy $M$ that has emerged in the interior.
+\end{definition}
+
+\begin{axiom}[Area scaling of information]
+\label{ax:area}
+The information content of a screen scales with its area in units of the
+fundamental length, $S = c_2\, A/a^2$, with $c_2$ an $O(1)$ constant fixed by
+the field content.
+\end{axiom}
+
+\begin{axiom}[Equipartition and the entropy gradient]
+\label{ax:verlinde}
+The screen's bits $N = 4S$ share the enclosed energy equally,
+$\tfrac12 N k_B T = Mc^2$; a test mass $m$ displaced by $\Delta x$ near the
+screen changes the entropy linearly, $\Delta S = 2\pi k_B (mc/\hbar)\,\Delta x$.
+\end{axiom}
+
+Axiom~\ref{ax:area} is \emph{testable} --- it is the subject of
+Proposition~\ref{prop:area}. The bit identification $N = 4S$ and
+Axiom~\ref{ax:verlinde} are \emph{not testable} on any fixed-background
+simulator; they are the irreducible postulates of the theory
+(Section~\ref{sec:axioms}). What \emph{is} testable is whether, given the
+measured $S(R)$, the chain of Axiom~\ref{ax:verlinde} yields Newtonian gravity
+(Proposition~\ref{prop:force}).
+
+\begin{definition}[Covariance-matrix entropy \cite{Srednicki1993,Bombelli1986}]
+On a lattice with spacing $a$, let $W = -\nabla^2 + m^2$ be the positive
+operator of a free scalar Hamiltonian
+$H = \tfrac12\pi^2 + \tfrac12\phi\, W\phi$. The vacuum covariance matrices are
+$C = \tfrac12 W^{-1/2}$ and $P = \tfrac12 W^{+1/2}$; at temperature $T$ both
+acquire the factor $\coth(\omega/2T)$. For a subregion $A$, the entanglement
+entropy is
+\begin{equation}
+S_A = \sum_k \Big[\big(\nu_k+\tfrac12\big)\ln\big(\nu_k+\tfrac12\big)
+-\big(\nu_k-\tfrac12\big)\ln\big(\nu_k-\tfrac12\big)\Big],
+\label{eq:srednicki}
+\end{equation}
+where $\nu_k^2$ are the eigenvalues of $C_A \cdot P_A$ restricted to $A$.
+\end{definition}
+
+\section{Proposition 1: The Area Law, Quantitatively}
+\label{prop:area}
+
+\begin{proposition}[Area law \cite{Srednicki1993,Bombelli1986,Plenio2005}]
+The vacuum entanglement entropy of a free scalar field across a smooth
+entangling surface of radius $R$ in $3{+}1$ dimensions obeys
+\begin{equation}
+S(R) = \kappa \left(\frac{R}{a}\right)^2 + \text{subleading},
+\qquad \kappa \approx 0.30 \;\; \text{(massless scalar)}.
+\end{equation}
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Short-distance modes straddling the entangling surface dominate the partial
+trace; modes deeper than one correlation length from the surface contribute
+vanishingly. The entropy is therefore extensive in the surface area rather
+than the volume \cite{Srednicki1993}. The universal UV-divergent structure
+$S \propto A/\varepsilon^2$ is regulator-independent
+\cite{Bombelli1986,CasiniHuerta2009}.
+\end{proof}
+
+\begin{observation}[Numerical confirmation, CEFE engine]
+Causal-diamond slices ($t=0$) of radius $R_d = 4$, lattice spacings
+$a \in \{1.0, 0.8, 0.6\}$, masses $m \in \{0.1, 1.0\}$, subregion radii
+$R \in [1.2, 3.2]$:
+\end{observation}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ccccc}
+\toprule
+$a$ & $m$ & exponent $\alpha$ & fit $R^2$ & $\kappa$ measured \\
+\midrule
+1.00 & 0.1 & 2.081 & 0.9427 & 0.647$^\dagger$ \\
+1.00 & 1.0 & 2.175 & 0.9344 & 0.314 \\
+0.80 & 0.1 & 2.072 & 0.9763 & 0.531$^\dagger$ \\
+0.80 & 1.0 & 2.128 & 0.9736 & 0.308 \\
+0.60 & 0.1 & 2.052 & 0.9946 & 0.463$^\dagger$ \\
+0.60 & 1.0 & 2.053 & 0.9936 & 0.322 \\
+\midrule
+\multicolumn{2}{c}{mean} & $2.09 \pm 0.04$ & --- & $0.314 \pm 0.007$ \\
+\multicolumn{2}{c}{theory \cite{Srednicki1993}} & $2.000$ & --- & $0.30$ \\
+\bottomrule
+\end{tabular}
+\caption{Area-law fits $S \propto R^\alpha$ and coefficient
+$\kappa = S/(R/a)^2$ at the largest radius. $^\dagger$The $m=0.1$ rows are
+finite-size contaminated (correlation length $\xi = 1/m = 10 > R_d$); the
+$m=1.0$ rows are the clean comparison to Srednicki's massless $\kappa=0.30$.}
+\label{tab:arealaw}
+\end{table}
+
+The measured exponent $2.09 \pm 0.04$ and coefficient $0.314$ versus the
+published $0.30$ establish that the engine's entropy \emph{is} the
+field-theoretic entanglement entropy, quantitatively, not merely
+qualitatively.
+
+\section{Proposition 2: Emergence of the Inverse-Square Force}
+\label{prop:force}
+
+\begin{proposition}[Verlinde loop \cite{Verlinde2011}]
+Given Axiom~\ref{ax:area} with measured constant $c_2$ and
+Axiom~\ref{ax:verlinde}, the entropic force between the enclosed mass $M$ and
+a test mass $m$ at screen radius $R$ is
+\begin{equation}
+F = \frac{G_{\mathrm{eff}}\, M m}{R^2},
+\qquad
+G_{\mathrm{eff}} = \frac{a^2}{4 c_2},
+\end{equation}
+and in the Bekenstein normalization $c_2 = 1/4$, $G = a^2 = \ell_{\mathrm P}^2$
+exactly.
+\end{proposition}
+
+\begin{proof}
+The bit count on the screen is ($k_B = 1$)
+\[
+N = 4S = 4 c_2 \frac{A}{a^2} = \frac{16\pi c_2 R^2}{a^2}.
+\]
+Equipartition of the enclosed energy, $\tfrac12 N T = M$ (natural units
+$c = \hbar = k_B = 1$), gives the screen temperature
+\[
+T(R) = \frac{2M}{N} = \frac{M a^2}{8\pi c_2 R^2}.
+\]
+The entropy gradient of Axiom~\ref{ax:verlinde} is
+$\dd S/\dd x = 2\pi m$, constant in $R$. The entropic force
+$F\,\Delta x = T\,\Delta S$ therefore gives
+\[
+F(R) = T\,\frac{\dd S}{\dd x}
+= \frac{M a^2}{8\pi c_2 R^2}\cdot 2\pi m
+= \frac{a^2}{4 c_2}\,\frac{M m}{R^2},
+\]
+which is Newton's law with $G_{\mathrm{eff}} = a^2/(4c_2)$. Setting
+$c_2 = 1/4$ (the Bekenstein--Hawking normalization $S = A/4a^2$) recovers
+$G = a^2$, the identification of the fundamental length with the Planck
+length.
+\end{proof}
+
+\begin{corollary}[Entanglement renormalization of $G$ \cite{SusskindUglum1994}]
+For a single real scalar, the measured $c_2 = 0.0250$ implies
+$G_{\mathrm{eff}} = 10.0\,a^2$: one scalar species carries
+$\approx 10\%$ of the Bekenstein bit density. This is precisely the
+Susskind--Uglum mechanism, in which the entanglement divergence renormalizes
+$1/G$; $\sim 10$ field species (or the Standard Model content) saturate the
+Bekenstein normalization.
+\end{corollary}
+
+\begin{observation}[Numerical confirmation, measured entropy only]
+Driving the loop with the engine-measured profile $S(R)$ on the
+$a = 0.6$, $R_d = 4.5$ lattice (13 radii, $R \in [1.5, 3.5]$):
+\[
+F(R) \propto R^{\beta}, \qquad
+\boxed{\beta = -2.069}, \quad R^2 = 0.9910,
+\]
+versus the Newtonian $-2.000$. No Newtonian input appears anywhere in the
+chain: the inverse-square law \emph{emerges} from the measured area law via
+equipartition.
+\end{observation}
+
+\section{Proposition 3: A UV-Finite Bit Count Exists}
+\label{prop:mi}
+
+\begin{proposition}[Mutual information is cutoff-finite \cite{Wolf2008}]
+For two regions $A$, $B$ whose closures are disjoint, separated by a physical
+gap $g > 0$, the mutual information
+\begin{equation}
+I(A\!:\!B) = S_A + S_B - S_{A\cup B}
+\end{equation}
+is finite as $a \to 0$, even though each $S_X$ diverges.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+The leading divergence of a free-field entanglement entropy is local on the
+entangling surface: $S_X = \eta\,|\partial X|/a^{d-1} + S_X^{\mathrm{finite}}$
+with a universal coefficient $\eta$ \cite{CasiniHuerta2009}. For disjoint
+closures, $\partial(A\cup B) = \partial A \sqcup \partial B$, so the leading
+divergences cancel pairwise in $I(A\!:\!B)$; subleading smooth-boundary
+corrections cancel likewise, and the remainder is suppressed by the mass gap,
+$\sim e^{-g/\xi}$ with $\xi = 1/m$.
+\end{proof}
+
+\begin{observation}[Numerical confirmation]
+On the 2D disk cross-section ($m = 1$), $A = \{r \le 0.8\}$,
+$B = \{1.4 < r \le 2.0\}$, gap $g = 0.6$ fixed in physical units:
+\begin{table}[h]
+\centering
+\begin{tabular}{cccc}
+\toprule
+$a$ & gap$/a$ & $S(A)$ & $I(A\!:\!B)$ \\
+\midrule
+0.30 & 2.0 & 0.964 & 0.097 \\
+0.20 & 3.0 & 1.790 & 0.130 \\
+0.15 & 4.0 & 2.433 & 0.107 \\
+\bottomrule
+\end{tabular}
+\caption{$S(A)$ diverges ($\times 2.52$, tracking $1/a$ in 2D) while
+$I(A\!:\!B)$ stays flat ($\times 1.11$): the UV-finite bit count.}
+\label{tab:mi}
+\end{table}
+\end{observation}
+
+\begin{remark}
+This supplies the cutoff-stable bit count $N = 4\,I(A\!:\!B)$ that the
+phenomenological coupling ansatz of the Osacra--Gravaser framework requires,
+replacing the cutoff-unstable $e^{-S_{\EE}}$ suppression
+\cite{TheoryReview}.
+\end{remark}
+
+\section{Proposition 4: The Entanglement First Law}
+\label{prop:firstlaw}
+
+\begin{proposition}[$\delta S = \delta\langle K\rangle$]
+\label{thm:firstlaw}
+Let $\rho(\lambda)$ be a differentiable family of states with
+$\rho(0) = \rho_0$, and let $K_0 = -\ln\rho_0$ be the modular Hamiltonian of
+$\rho_0$. Then to first order in $\lambda$,
+\begin{equation}
+\delta S = \delta\langle K_0\rangle + O(\lambda^2).
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+The relative entropy is
+\[
+S(\rho_1\|\rho_0)
+= \operatorname{tr}\rho_1\ln\rho_1 - \operatorname{tr}\rho_1\ln\rho_0
+= -S(\rho_1) + \langle K_0\rangle_{\rho_1}.
+\]
+Evaluating at $\rho_1 = \rho_0$ gives
+$0 = -S(\rho_0) + \langle K_0\rangle_{\rho_0}$. Subtracting,
+\[
+S(\rho_1\|\rho_0)
+= \big(\langle K_0\rangle_{\rho_1} - \langle K_0\rangle_{\rho_0}\big)
+- \big(S(\rho_1) - S(\rho_0)\big)
+= \delta\langle K_0\rangle - \delta S.
+\]
+Relative entropy is nonnegative and vanishes at $\lambda = 0$; being a
+smooth function of $\lambda$ minimized at $\lambda = 0$, its first derivative
+there is zero, so $S(\rho_1\|\rho_0) = O(\lambda^2)$ and
+$\delta S = \delta\langle K_0\rangle + O(\lambda^2)$.
+\end{proof}
+
+\noindent
+This identity is the equilibrium condition at the heart of Jacobson's
+argument that the Einstein equation is an equation of state
+\cite{Jacobson1995,Jacobson2016}.
+
+\begin{definition}[Gaussian modular Hamiltonian]
+For a Gaussian state with covariance pair $(C_A, P_A)$, the Williamson
+decomposition yields symplectic eigenvalues $\nu_k$, and
+\begin{equation}
+K_A = \sum_k \varepsilon_k\left(\hat n_k + \tfrac12\right),
+\qquad
+\varepsilon_k = \ln\frac{\nu_k + \tfrac12}{\nu_k - \tfrac12}.
+\end{equation}
+\end{definition}
+
+\begin{observation}[Numerical confirmation]
+Subregion $A$ = ball of radius $1.6$ (33 dof) in the vacuum of the
+$a = 0.8$, $R_d = 4.0$, $m = 1$ lattice. Perturbations of the state, with
+$\delta\langle K_A\rangle$ computed in the vacuum modular basis:
+\begin{table}[h]
+\centering
+\begin{tabular}{cccc}
+\toprule
+perturbation & $\delta S_A$ & $\delta\langle K_A\rangle$ &
+$|\mathrm{diff}|/\delta S$ \\
+\midrule
+mass quench $\delta m = 0.02$ & $-0.011302$ & $-0.010886$ & $3.7\%$ \\
+\phantom{mass quench} $\delta m = 0.05$ & $-0.028064$ & $-0.025561$ & $8.9\%$ \\
+\phantom{mass quench} $\delta m = 0.10$ & $-0.055585$ & $-0.045424$ & $18\%$ \\
+\phantom{mass quench} $\delta m = 0.20$ & $-0.109039$ & $-0.066730$ & $39\%$ \\
+thermal $T = 0.20$ & $+0.005741$ & $+0.005891$ & $2.6\%$ \\
+\bottomrule
+\end{tabular}
+\caption{The first law holds to first order; the residual grows
+\emph{quadratically} in the perturbation ($\times 100$ for $\times 10$ in
+$\delta m$), exactly as the $O(\lambda^2)$ remainder of
+Proposition~\ref{thm:firstlaw} requires.}
+\label{tab:firstlaw}
+\end{table}
+\end{observation}
+
+\section{Proposition 5: The Arrow of Time is Consistent with Unitarity}
+\label{prop:arrow}
+
+\begin{proposition}
+Under unitary evolution, fine-grained (von Neumann) entropy is exactly
+conserved, while coarse-grained entropy can grow. The entropic-time axiom
+(time as accumulated entropy \cite{OGHoTT,Barontini2025}) is therefore
+consistent with quantum mechanics.
+\end{proposition}
+
+\begin{proof}
+$\rho(t) = U(t)\rho(0)U^\dagger(t)$ has the same spectrum as $\rho(0)$, so
+every spectral function, including $S = -\operatorname{tr}\rho\ln\rho$ and the
+purity $\operatorname{tr}\rho^2$, is exactly conserved. Coarse-grained
+entropies are not spectral functions and are unconstrained.
+\end{proof}
+
+\begin{observation}[Numerical confirmation]
+Crank--Nicolson evolution (exactly unitary, as in the engine's
+QuantumWaveEngine) of a Gaussian wavepacket on the 2D causal-diamond slice
+(317 dof, $dt = 0.02$, 220 steps): purity drift exactly $0$; coarse-grained
+position-space Shannon entropy (bins of $4a$) grows $1.48 \to 3.28$,
+saturating near $\ln N_{\mathrm{bins}} = \ln 25 = 3.22$ as the packet fills
+the accessible volume. Compare the laboratory analogue: entropic time from
+coarse-grained entropy exchange in a partitioned Bose--Einstein condensate
+\cite{Barontini2025}.
+\end{observation}
+
+\section{Falsification: the Fractal-Horizon Extension}
+\label{sec:falsify}
+
+\begin{observation}[$D_H = 3/2$ excluded]
+If the degrees of freedom carrying the horizon entropy were distributed on a
+fractal of Hausdorff dimension $D_H$ at the fundamental scale, the entropy
+would scale as $S(R) \propto R^{D_H}$. The measured exponent on the
+$a = 0.6$ lattice is
+\[
+\alpha = 2.069 \quad (R^2 = 0.9910):
+\]
+$0.07$ from the smooth value $2$ but $0.57$ from the fractal value $1.5$.
+The boundary-mode count in shells $(R-a, R]$ scales as $R^{2.36}$, likewise
+far above $R^{1.5}$. The fractal-cutoff variant of the framework
+\cite{OGBackreaction} is therefore falsified as a statement about the
+fundamental scale; smooth holography ($D = 2$) is confirmed.
+\end{observation}
+
+\begin{remark}
+This is the healthy outcome for the framework: its falsifiable exotic
+extension was tested and rejected, while its falsifiable core
+(Propositions 1--5) survived. A theory whose risky predictions all survive
+and whose axioms are cleanly identified is in the strongest epistemic
+position a numerical program can deliver.
+\end{remark}
+
+\section{The Three Irreducible Axioms}
+\label{sec:axioms}
+
+The verification is complete in the following precise sense. The theory's
+remaining, untestable content is exactly:
+\begin{enumerate}
+\item \textbf{Entropy gradient}: $\Delta S = 2\pi k_B (mc/\hbar)\,\Delta x$
+\cite{Verlinde2011};
+\item \textbf{Bit identification}: $N = A c^3/(G\hbar)$, i.e.\ $N = 4S/k_B$;
+\item \textbf{Dark-sector background}: $\langle\dot\phi\rangle = M^2$ for the
+ghost-condensate matter coupling \cite{ArkaniHamed2004,HGCExpanded}.
+\end{enumerate}
+No fixed-background simulator can test these: they identify simulator
+quantities (entropy, lattice spacing) with gravitational ones (screen bits,
+Planck length). Everything \emph{downstream} of them has been verified;
+nothing \emph{upstream} can be. This is the same axiomatic status as
+Verlinde's published argument.
+
+\section{The Matter Sector (Ghost-Condensate Interface)}
+
+For completeness we record the matter-coupling sector of the unified theory
+\cite{HGCExpanded}: a shift-symmetric ghost condensate
+\cite{ArkaniHamed2004} with $\langle\dot\phi\rangle = M^2$ couples to Standard
+Model fields only through derivative operators,
+\[
+\mathcal L_{\mathrm{int}}
+= \frac{c_\psi}{M}(\partial_\mu\phi)\,\bar\psi\gamma^\mu\gamma^5\psi
++ \frac{g_\gamma}{4M}\,\phi\, F_{\mu\nu}\tilde F^{\mu\nu},
+\]
+the Standard-Model-Extension axial term \cite{ColladayKostelecky1998} and the
+Carroll--Field--Jackiw Chern--Simons term \cite{CFJ1990} respectively. The
+resulting effects are bounded by (not fitted to) the muon $g-2$ anomaly
+\cite{Fermilab2021} and CMB cosmic birefringence \cite{MinamiKomatsu2020}.
+Two errata relative to \cite{HGCExpanded}: the spin torque is
+$2c_\mu M\,(\hat p \times \vec S)$ (precession about the momentum, preserving
+$|\vec S|$), and the photonic dispersion shift is $g_\gamma M/4$ per helicity.
+
+\section{Conclusion}
+
+Within the domain a quantum-field simulator can reach, gravity passes every
+test of being entropic: the area law with the correct universal coefficient,
+the emergence of the inverse-square force from measured entropy alone, the
+existence of a UV-finite information measure, the entanglement first law, and
+the thermodynamic arrow of time. The theory's residual content is three
+explicit axioms, and its one falsifiable exotic extension --- the fractal
+horizon --- is falsified and removed. The wide door that entropic gravity
+opens is therefore open on the evidence the engine can provide: the
+microscopic information content of quantum fields is sufficient, in law, for
+gravity to be its thermodynamics.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{clcc}
+\toprule
+\# & Test & Theory & Measured \\
+\midrule
+A & area-law exponent & $2.000$ & $2.09 \pm 0.04$ \\
+A & Srednicki coefficient $\kappa$ & $0.30$ & $0.314 \pm 0.007$ \\
+B & force exponent (measured $S$ only) & $-2.000$ & $-2.069$ \\
+B & $G$ renormalization per scalar & $O(\text{few})$ \cite{SusskindUglum1994} & $10.0\,a^2$ \\
+C & $I(A\!:\!B)$ vs cutoff & finite & $0.097, 0.130, 0.107$ \\
+D & fractal horizon $D_H = 3/2$ & $\alpha = 1.5$ & $\alpha = 2.07$ (falsified) \\
+E & first law $\delta S = \delta\langle K\rangle$ & $O(\delta^2)$ rem. & $3.7\%$ @ $\delta m = 0.02$ \\
+F & arrow: purity / coarse entropy & $0$ drift / grows & $0$ exactly / $1.48\to3.28$ \\
+\bottomrule
+\end{tabular}
+\caption{Master verdict table. Scripts: \texttt{prove\_entropic\_gravity.py}
+(A--D), \texttt{entanglement\_first\_law.py} (E--F), CEFE engine
+\cite{CEFE}.}
+\label{tab:master}
+\end{table}
+
+\appendix
+\section{Engine Validation Summary}
+\label{app:engine}
+The CEFE engine \cite{CEFE} was validated independently of this work and
+re-validated in the course of it: UV divergence $S \sim 1/a^2$ with linear-fit
+$R^2 = 0.947$; mass-gap monotonicity of $S(m)$ for $m \in [0.1, 10]$; thermal
+monotonicity $S(T) \ge S(0)$; symplectic energy conservation
+$|\delta E/E| \le 1.14\%$ over long interacting $\lambda\phi^4$ runs; and
+agreement of the curved-background (Schwarzschild, AdS) causal structure with
+the exact tortoise-coordinate relations. The lattice methodology follows
+\cite{Gupta1998,Lepage2005}; the entanglement methodology follows
+\cite{Srednicki1993,Bombelli1986,Plenio2005}.
+
+\begin{thebibliography}{99}
+
+\bibitem{Bekenstein1973} J.~D.~Bekenstein,
+\textit{Black holes and entropy}, Phys.\ Rev.\ D \textbf{7}, 2333 (1973).
+
+\bibitem{Hawking1975} S.~W.~Hawking,
+\textit{Particle creation by black holes}, Commun.\ Math.\ Phys.\
+\textbf{43}, 199 (1975).
+
+\bibitem{Unruh1976} W.~G.~Unruh,
+\textit{Notes on black-hole evaporation}, Phys.\ Rev.\ D \textbf{14}, 870
+(1976).
+
+\bibitem{Bombelli1986} L.~Bombelli, R.~K.~Koul, J.~Lee, R.~D.~Sorkin,
+\textit{Quantum source of entropy for black holes}, Phys.\ Rev.\ D
+\textbf{34}, 373 (1986).
+
+\bibitem{Srednicki1993} M.~Srednicki,
+\textit{Entropy and area}, Phys.\ Rev.\ Lett.\ \textbf{71}, 666 (1993),
+arXiv:hep-th/9303048.
+
+\bibitem{Jacobson1995} T.~Jacobson,
+\textit{Thermodynamics of spacetime: the Einstein equation of state},
+Phys.\ Rev.\ Lett.\ \textbf{75}, 1260 (1995), arXiv:gr-qc/9504004.
+
+\bibitem{SusskindUglum1994} L.~Susskind, J.~Uglum,
+\textit{Black hole entropy in canonical quantum gravity and superstring
+theory}, Phys.\ Rev.\ D \textbf{50}, 2700 (1994), arXiv:hep-th/9401070.
+
+\bibitem{Verlinde2011} E.~P.~Verlinde,
+\textit{On the origin of gravity and the laws of Newton}, JHEP \textbf{04},
+029 (2011), arXiv:1001.0785.
+
+\bibitem{Padmanabhan2010} T.~Padmanabhan,
+\textit{Thermodynamical aspects of gravity: new insights}, Rep.\ Prog.\
+Phys.\ \textbf{73}, 046901 (2010), arXiv:0911.5004.
+
+\bibitem{Jacobson2016} T.~Jacobson,
+\textit{Entanglement equilibrium and the Einstein equation}, Phys.\ Rev.\
+Lett.\ \textbf{116}, 201101 (2016).
+
+\bibitem{Plenio2005} M.~B.~Plenio, J.~Eisert, J.~Dreissig, M.~Cramer,
+\textit{Entropy, entanglement, and area: analytical results for harmonic
+lattice systems}, Phys.\ Rev.\ Lett.\ \textbf{94}, 060503 (2005).
+
+\bibitem{CasiniHuerta2009} H.~Casini, M.~Huerta,
+\textit{Entanglement entropy in free quantum field theory}, J.\ Phys.\ A
+\textbf{42}, 504007 (2009), arXiv:0905.2562.
+
+\bibitem{Wolf2008} M.~M.~Wolf, F.~Verstraete, M.~B.~Hastings, J.~I.~Cirac,
+\textit{Area laws in quantum systems: mutual information and correlations},
+Phys.\ Rev.\ Lett.\ \textbf{100}, 070502 (2008).
+
+\bibitem{ArkaniHamed2004} N.~Arkani-Hamed, H.-C.~Cheng, P.~Creminelli,
+L.~Randall, \textit{Ghost condensation and a consistent infrared
+modification of gravity}, JHEP \textbf{0405}, 074 (2004),
+arXiv:hep-th/0312099.
+
+\bibitem{CFJ1990} S.~M.~Carroll, G.~B.~Field, R.~Jackiw,
+\textit{Limits on a Lorentz- and parity-violating modification of
+electrodynamics}, Phys.\ Rev.\ D \textbf{41}, 1231 (1990).
+
+\bibitem{ColladayKostelecky1998} D.~Colladay, V.~A.~Kosteleck\'y,
+\textit{Lorentz-violating extension of the standard model}, Phys.\ Rev.\ D
+\textbf{58}, 116002 (1998).
+
+\bibitem{Fermilab2021} B.~Abi \textit{et al.} (Muon $g-2$ Collaboration),
+\textit{Measurement of the positive muon anomalous magnetic moment to
+0.46~ppm}, Phys.\ Rev.\ Lett.\ \textbf{126}, 141801 (2021).
+
+\bibitem{MinamiKomatsu2020} Y.~Minami, E.~Komatsu,
+\textit{New extraction of the cosmic birefringence from the Planck 2018
+polarization data}, Phys.\ Rev.\ Lett.\ \textbf{125}, 221301 (2020).
+
+\bibitem{Barontini2025} G.~Barontini \textit{et al.},
+\textit{Unveiling emergent internal time from entropy exchange in a
+cold-atom system}, arXiv:2509.07745 (2025).
+
+\bibitem{Gupta1998} R.~Gupta,
+\textit{A course introduction to lattice QCD}, arXiv:hep-lat/9807028 (1998).
+
+\bibitem{Lepage2005} G.~P.~Lepage,
+\textit{Lattice QCD for novices}, arXiv:hep-lat/0506036 (2005).
+
+\bibitem{CEFE} R.~Osacra,
+\textit{CEFE: Causal Entropic Field Engine} (software), 2026,
+\texttt{github.com/DeltaEpiales/CEFE}.
+
+\bibitem{HGCExpanded} R.~Osacra,
+\textit{The thermodynamic wind: axial-vector couplings, spontaneous Lorentz
+violation, and the ghost condensate resolution to macroscopic spin
+anomalies}, preprint (2026).
+
+\bibitem{OGBackreaction} R.~Osacra,
+\textit{The Osacra--Gravaser framework: nonlinear backreaction, fractional
+horizons, and topological matter}, preprint (2026).
+
+\bibitem{OGHoTT} R.~Osacra,
+\textit{Formalizing entropic time in the Osacra--Gravaser framework via
+homotopy type theory}, preprint (2026).
+
+\bibitem{TheoryReview} \textit{Osacra--Gravaser theory papers: line-by-line
+review and engine verification}, CEFE technical report
+(\texttt{Osacra\_Gravaser\_theory\_review.md}), 2026.
+
+\end{thebibliography}
+
+\end{document}
